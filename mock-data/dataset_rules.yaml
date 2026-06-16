@@ -1,0 +1,204 @@
+version: "1.0"
+contract_count: 25
+
+contract_id:
+  prefix: CR
+  digits: 9
+  seed_base: 100000001
+
+customer_names:
+  - 张伟
+  - 李娜
+  - 王强
+  - 陈静
+  - 刘洋
+  - 赵敏
+  - 孙磊
+  - 周婷
+  - 吴刚
+  - 郑丽
+  - 黄浩
+  - 林雪
+  - 徐鹏
+  - 马超
+  - 胡芳
+  - 郭亮
+  - 何静
+  - 高峰
+  - 罗敏
+  - 梁宇
+  - 宋佳
+  - 唐勇
+  - 韩梅
+  - 冯涛
+  - 曹阳
+
+loan_amount:
+  base: 20000
+  step: 37000
+  modulo: 480000
+
+overdue_days:
+  base: 3
+  step: 7
+  modulo: 90
+
+initial_risk_score:
+  tiers:
+    - max_overdue: 9
+      score: 25
+    - max_overdue: 29
+      score: 55
+    - max_overdue: 999
+      score: 85
+
+risk_thresholds:
+  green_max: 40
+  yellow_max: 70
+
+history:
+  count_base: 2
+  count_step: 1
+  count_modulo: 4
+  actions:
+    - action: 电话催收
+      results:
+        - 无人接听
+        - 承诺3日内还款
+        - 客户拒接
+    - action: 短信提醒
+      results:
+        - 已发送
+        - 客户回复将还款
+    - action: 上门拜访
+      results:
+        - 未找到本人
+        - 签署还款承诺书
+  operators:
+    - 催收员A
+    - 催收员B
+    - 系统自动
+
+risk_labels:
+  green: 低风险
+  yellow: 中风险
+  red: 高风险
+
+customer_traits:
+  genders:
+    - 男
+    - 女
+  occupations:
+    - 企业职员
+    - 个体经营
+    - 自由职业
+    - 公务员
+    - 制造业工人
+    - 服务业从业
+    - 小微企业主
+  cities:
+    - 北京
+    - 上海
+    - 广州
+    - 深圳
+    - 杭州
+    - 成都
+    - 武汉
+    - 西安
+  income_levels:
+    - 5万以下
+    - 5-15万
+    - 15-30万
+    - 30万以上
+  marital_status:
+    - 已婚
+    - 未婚
+    - 离异
+  contact_preferences:
+    - 电话
+    - 短信
+    - 微信
+    - 邮件
+  repayment_willingness:
+    - 高
+    - 中
+    - 低
+  age:
+    min: 26
+    max: 58
+
+complaint_tendency:
+  levels:
+    - 低
+    - 中
+    - 高
+  action_map:
+    - level: 低
+      action: 按常规催收节奏跟进，语气温和专业，完整留存通话录音即可。
+    - level: 中
+      action: 联系前复核话术合规性，避免高频打扰；优先短信与单次电话，预留客服升级通道。
+    - level: 高
+      action: 升级至投诉敏感队列，须主管审核后再联系；禁用威胁性措辞，准备监管报备材料。
+
+recommended_action_category:
+  allowed:
+    - soft_reminder
+    - payment_nudge
+    - negotiation
+    - warning_notice
+    - escalation
+    - legal_warning
+    - field_follow_up
+  # Portfolio target: 40% early touch · 25% negotiation · 20% warning · 10% escalation · 5% legal/field
+  global_weights:
+    - id: soft_reminder
+      weight: 22
+    - id: payment_nudge
+      weight: 18
+    - id: negotiation
+      weight: 25
+    - id: warning_notice
+      weight: 20
+    - id: escalation
+      weight: 10
+    - id: legal_warning
+      weight: 3
+    - id: field_follow_up
+      weight: 2
+  overdue_affinity:
+    - max_overdue: 9
+      multipliers:
+        soft_reminder: 3.2
+        payment_nudge: 2.6
+        negotiation: 0.45
+        warning_notice: 0.18
+        escalation: 0.07
+        legal_warning: 0.04
+        field_follow_up: 0.04
+    - max_overdue: 30
+      multipliers:
+        soft_reminder: 1.4
+        payment_nudge: 1.9
+        negotiation: 2.4
+        warning_notice: 0.75
+        escalation: 0.28
+        legal_warning: 0.1
+        field_follow_up: 0.08
+    - max_overdue: 60
+      multipliers:
+        soft_reminder: 0.55
+        payment_nudge: 0.85
+        negotiation: 1.15
+        warning_notice: 2.1
+        escalation: 1.7
+        legal_warning: 0.45
+        field_follow_up: 0.35
+    - max_overdue: 999
+      multipliers:
+        soft_reminder: 0.2
+        payment_nudge: 0.35
+        negotiation: 0.65
+        warning_notice: 1.4
+        escalation: 2.6
+        legal_warning: 2.2
+        field_follow_up: 1.9

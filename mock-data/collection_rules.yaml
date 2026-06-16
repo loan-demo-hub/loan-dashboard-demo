@@ -1,0 +1,107 @@
+version: "1.0"
+default_rule_id: general_inquiry
+
+risk_thresholds:
+  green_max: 40
+  yellow_max: 70
+
+rules:
+  - id: polite_reminder
+    intent: 友好提醒
+    action_category: 温和提醒
+    keywords:
+      - 提醒
+      - 短信
+      - 通知
+    score_delta: -5
+    recommended_action: 发送友好还款提醒短信或电话，确认客户是否知悉账单及还款渠道。
+    script_template: |
+      您好，{customerName}先生/女士，我是 XX 银行贷后服务专员。
+      温馨提醒：合同 {contractId} 已逾期 {overdueDays} 天，当前欠款 {loanAmount}，风险评分 {riskScore} 分。
+      请问是否方便今日内安排还款？如有困难，可协助了解延期或分期选项。
+
+  - id: payment_plan
+    intent: 协商分期
+    action_category: 协商谈判
+    keywords:
+      - 分期
+      - 协商
+      - 方案
+      - 减免
+    score_delta: -8
+    recommended_action: 评估客户还款能力，提供 2–3 期分期方案，首期不低于欠款 30%，并签署书面承诺。
+    script_template: |
+      {customerName}先生/女士，关于合同 {contractId}，欠款 {loanAmount}，逾期 {overdueDays} 天。
+      我行为您申请分期还款方案，首期需不低于欠款的 30%。
+      请问您希望分几期？预计何时可以支付首期？
+
+  - id: risk_warning
+    intent: 风险警示
+    action_category: 升级催收
+    keywords:
+      - 风险
+      - 征信
+      - 逾期
+      - 等级
+    score_delta: 10
+    recommended_action: 正式告知征信影响及罚息后果，要求客户在 3 个工作日内给出明确还款计划。
+    script_template: |
+      {customerName}先生/女士，合同 {contractId} 已逾期 {overdueDays} 天，欠款 {loanAmount}。
+      当前风险评分 {riskScore} 分，等级为 {riskLevel}。
+      继续逾期将影响个人征信并产生额外费用，请本周内至少偿还部分款项。
+
+  - id: legal_threat
+    intent: 法律威胁应对
+    action_category: 法律警告
+    keywords:
+      - 要起诉
+      - 起诉我
+      - 告你们
+    score_delta: -30
+    recommended_action: 客户表达诉讼意向时，切换合规安抚话术，记录诉求并转交法务复核，避免激化冲突。
+    script_template: |
+      {customerName}先生/女士，理解您的关切。关于合同 {contractId}（逾期 {overdueDays} 天，欠款 {loanAmount}），
+      我们重视您的反馈，可先为您说明当前账单明细与可选还款/协商方案。
+      如需正式投诉或法律咨询，我将为您登记并安排专人回电，请问您方便的时间？
+
+  - id: escalation
+    intent: 升级催收
+    action_category: 法律警告
+    keywords:
+      - 升级
+      - 法务
+      - 起诉
+      - 严重
+      - 专项
+    score_delta: 15
+    recommended_action: 升级至专项催收组，发送正式催款通知书，评估法律途径并整理证据链。
+    script_template: |
+      {customerName}先生/女士，我是 XX 银行专项催收组。
+      合同 {contractId} 逾期 {overdueDays} 天，欠款 {loanAmount}，风险评分 {riskScore} 分。
+      请于 3 个工作日内结清或签订书面还款协议，否则将依法采取进一步措施。
+
+  - id: contact_customer
+    intent: 联系客户
+    action_category: 温和提醒
+    keywords:
+      - 联系
+      - 电话
+      - 沟通
+      - 上门
+    score_delta: 0
+    recommended_action: 通过已登记渠道联系客户，确认还款意愿，全程录音并记录跟进结果。
+    script_template: |
+      您好，{customerName}先生/女士，这里是 XX 银行贷后中心。
+      就合同 {contractId}（逾期 {overdueDays} 天，欠款 {loanAmount}）与您确认还款安排。
+      请问您目前是否有明确的还款计划？
+
+  - id: general_inquiry
+    intent: 综合咨询
+    action_category: 温和提醒
+    keywords: []
+    score_delta: 0
+    recommended_action: 结合合同当前风险评分与逾期天数，选择适当的催收强度并记录本次沟通。
+    script_template: |
+      {customerName}先生/女士，关于合同 {contractId}：
+      逾期 {overdueDays} 天，欠款 {loanAmount}，风险评分 {riskScore} 分（{riskLevel}）。
+      请问您需要了解还款方式、分期方案，还是其他协助？

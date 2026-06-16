@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="智能催收助手 — 贷款逾期合同管理、规则引擎分析与 AI 催收对话">
+  <title>智能催收助手 · Loan Collection Intelligence</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-brand">
+      <span class="topbar-logo" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 2.18l7 3.11v5.71c0 4.54-3.07 8.83-7 9.93-3.93-1.1-7-5.39-7-9.93V6.29l7-3.11zM11 7v6h2V7h-2zm0 8v2h2v-2h-2z"/></svg>
+      </span>
+      <div>
+        <h1 class="topbar-title">智能催收助手</h1>
+        <span class="topbar-sub">Intelligent Collection Assistant</span>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span class="load-status" id="loadStatus">加载中…</span>
+      <span class="status-pill status-pill--online">
+        <span class="status-dot"></span> Online
+      </span>
+      <span class="ai-mode-badge" id="aiModeBadge" hidden></span>
+      <button type="button" class="btn-icon" id="longcatSettingsBtn" title="API 设置" aria-label="API 设置">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h2 class="sidebar-title"><span class="title-accent"></span>逾期合同列表</h2>
+        <span class="sidebar-count" id="contractCount">0 笔</span>
+      </div>
+      <div class="sidebar-filters">
+        <input type="search" id="searchInput" placeholder="搜索姓名 / 合同号" aria-label="搜索合同">
+        <select id="riskFilter" aria-label="风险等级筛选">
+          <option value="">全部风险</option>
+          <option value="green">低风险</option>
+          <option value="yellow">中风险</option>
+          <option value="red">高风险</option>
+        </select>
+        <select id="sortOrder" aria-label="排序">
+          <option value="overdue_desc">逾期天数 ↓</option>
+          <option value="score_desc">风险评分 ↓</option>
+          <option value="amount_desc">金额 ↓</option>
+        </select>
+      </div>
+      <div class="contract-list" id="contractList" role="listbox" aria-label="逾期合同列表"></div>
+    </aside>
+
+    <section class="main-panel">
+      <div class="contract-summary" id="contractSummary">
+        <div class="contract-summary-empty">请从左侧选择一笔逾期合同</div>
+      </div>
+
+      <div class="chat-zone">
+        <div class="chat-zone-header">
+          <h2 class="chat-zone-title">AI 催收助手</h2>
+          <button type="button" class="btn-text" id="clearChatBtn" disabled>清空对话</button>
+        </div>
+        <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="聊天消息"></div>
+      </div>
+
+      <footer class="chat-composer">
+        <div class="quick-prompts" id="quickPrompts">
+          <button type="button" class="quick-prompt" data-prompt="如何联系这位客户？">如何联系客户</button>
+          <button type="button" class="quick-prompt" data-prompt="请说明逾期还款的后果">还款说明</button>
+          <button type="button" class="quick-prompt" data-prompt="客户想申请展期，怎么处理？">展期咨询</button>
+          <button type="button" class="quick-prompt" data-prompt="是否需要发送法律告知？">法律后果</button>
+          <button type="button" class="quick-prompt" data-prompt="能否申请减免或宽限？">减免申请</button>
+        </div>
+        <form class="chat-form" id="chatForm">
+          <div class="chat-input-wrap">
+            <textarea
+              id="chatInput"
+              rows="1"
+              placeholder="输入您的问题，例如：如何联系客户？能否协商分期？"
+              aria-label="聊天输入"
+            ></textarea>
+          </div>
+          <button type="submit" class="btn-send" id="sendBtn" aria-label="发送消息">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            <span class="btn-send-label">发送</span>
+          </button>
+        </form>
+        <p class="composer-disclaimer">AI 生成内容仅供参考，请结合实际情况及合规要求使用。</p>
+      </footer>
+    </section>
+  </main>
+
+  <dialog class="settings-dialog" id="longcatSettingsDialog" aria-labelledby="longcatSettingsTitle">
+    <form method="dialog" class="settings-form" id="longcatSettingsForm">
+      <header class="settings-header">
+        <h2 id="longcatSettingsTitle">LongCat API 设置</h2>
+        <p class="settings-sub">兼容 OpenAI 格式 · <a href="https://longcat.chat/platform/docs/" target="_blank" rel="noopener">文档</a></p>
+      </header>
+      <label class="settings-field settings-check">
+        <input type="checkbox" id="longcatEnabled" />
+        <span>启用 LongCat 增强话术（规则引擎仍负责评分与分类）</span>
+      </label>
+      <label class="settings-field">
+        <span>API Key</span>
+        <input type="password" id="longcatApiKey" autocomplete="off" placeholder="Bearer 密钥" />
+      </label>
+      <label class="settings-field">
+        <span>模型</span>
+        <input type="text" id="longcatModel" value="LongCat-2.0-Preview" readonly />
+        <span class="settings-field-hint">当前平台仅支持 LongCat-2.0-Preview</span>
+      </label>
+      <label class="settings-field settings-check">
+        <input type="checkbox" id="longcatUseProxy" />
+        <span>通过本地代理 <code>/api/longcat</code>（仅本地开发 server.ps1 时可用）</span>
+      </label>
+      <label class="settings-field">
+        <span>API Base URL</span>
+        <input type="text" id="longcatBaseUrl" placeholder="https://api.longcat.chat/openai" />
+      </label>
+      <p class="settings-hint">静态部署（Vercel / GitHub Pages）请关闭代理，填写 API Key 与 LongCat 直连地址。本地开发可运行 <code>start-server.bat</code> 后启用代理。</p>
+      <footer class="settings-actions">
+        <button type="button" class="btn-secondary" id="longcatSettingsCancel">取消</button>
+        <button type="submit" class="btn-primary">保存</button>
+      </footer>
+    </form>
+  </dialog>
+
+  <script src="js/yamlLoader.js"></script>
+  <script src="js/yamlFallback.js"></script>
+  <script src="js/mockDataBundle.js"></script>
+  <script src="js/overdueReasonTagsBundle.js"></script>
+  <script src="js/contractGenerator.js"></script>
+  <script src="js/actionCategoryPicker.js"></script>
+  <script src="js/reasonTagEngine.js"></script>
+  <script src="js/dataLayer.js"></script>
+  <script src="js/ruleEngine.js"></script>
+  <script src="js/longcatConfig.js"></script>
+  <script src="js/longcatClient.js"></script>
+  <script src="js/aiService.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
