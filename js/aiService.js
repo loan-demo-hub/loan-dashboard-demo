@@ -2,20 +2,40 @@
  * AI Service — first turn: structured analysis card; follow-ups: natural language chat.
  */
 const AIService = (() => {
-  function buildLocalFollowUpText(ruleResult) {
+  function buildLocalFollowUpText(ruleResult, userText) {
     const s = ruleResult.structured;
     if (!s) return ruleResult.message || "暂时无法回答，请稍后重试。";
 
-    const script = String(s.collectionScript || "").trim();
-    const nextStep = String(s.nextStep || ActionCategoryPicker.getNextStep(s.recommendedActionCategory)).trim();
+    const question = String(userText || "").trim();
     const parts = [];
 
-    if (script) parts.push(script);
-    if (nextStep && nextStep !== script) parts.push(nextStep);
+    if (s.reasonMatchedKeywords?.length && s.overdueReason?.name) {
+      parts.push(
+        `结合您提到的「${s.reasonMatchedKeywords.join("、")}」，当前识别逾期原因为「${s.overdueReason.name}」。`
+      );
+    } else if (s.matchedKeywords?.length) {
+      parts.push(`本轮命中关键词：${s.matchedKeywords.join("、")}。`);
+    }
+
+    if (s.antiCollection?.level >= 2) {
+      parts.push(
+        `注意反催收信号（L${s.antiCollection.level}），建议：${s.antiCollection.recommendedAction}`
+      );
+    }
+
+    const nextStep = String(
+      s.nextStep || ActionCategoryPicker.getNextStep(s.recommendedActionCategory)
+    ).trim();
+
+    if (question && nextStep) {
+      parts.push(`针对「${question}」：${nextStep}`);
+    } else if (nextStep) {
+      parts.push(nextStep);
+    }
 
     if (parts.length) return parts.join("\n\n");
 
-    return ActionCategoryPicker.getNextStep(s.recommendedActionCategory);
+    return "请结合右侧 Intelligence 面板的合同与抵押物信息，针对具体问题选择合规跟进方式。";
   }
 
   async function processFirstTurn(userText, contract, dataLayer) {
@@ -65,7 +85,7 @@ const AIService = (() => {
   }
 
   async function processFollowUp(userText, contract, dataLayer, chatHistory) {
-    const ruleResult = RuleEngine.process(userText, contract, dataLayer);
+    const ruleResult = RuleEngine.process(userText, contract, dataLayer, { followUp: true });
 
     if (!ruleResult.ok) {
       return ruleResult;
@@ -76,7 +96,7 @@ const AIService = (() => {
         ok: true,
         source: "rule_engine",
         mode: "conversation",
-        text: buildLocalFollowUpText(ruleResult),
+        text: buildLocalFollowUpText(ruleResult, userText),
       };
     }
 
@@ -100,7 +120,7 @@ const AIService = (() => {
         ok: true,
         source: "rule_engine",
         mode: "conversation",
-        text: buildLocalFollowUpText(ruleResult),
+        text: buildLocalFollowUpText(ruleResult, userText),
         apiWarning: `LongCat 对话未生效（${err.message}），已使用本地回复`,
       };
     }

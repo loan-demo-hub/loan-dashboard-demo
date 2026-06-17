@@ -10,7 +10,8 @@ const UI = (() => {
     els = {
       contractList: document.getElementById("contractList"),
       contractCount: document.getElementById("contractCount"),
-      contractSummary: document.getElementById("contractSummary"),
+      intelligencePanel: document.getElementById("intelligencePanel"),
+      workspaceContext: document.getElementById("workspaceContext"),
       searchInput: document.getElementById("searchInput"),
       riskFilter: document.getElementById("riskFilter"),
       sortOrder: document.getElementById("sortOrder"),
@@ -71,7 +72,7 @@ const UI = (() => {
           data-feedback="adopted"
           aria-pressed="${message.feedback === "adopted"}"
           aria-label="Adopted">
-          👍 Adopted
+          Useful
         </button>
         <button
           type="button"
@@ -79,7 +80,7 @@ const UI = (() => {
           data-feedback="not_adopted"
           aria-pressed="${message.feedback === "not_adopted"}"
           aria-label="Not adopted">
-          👎 Not adopted
+          Not useful
         </button>
       </div>`;
   }
@@ -131,28 +132,6 @@ const UI = (() => {
     );
   }
 
-  function renderRiskGauge(score, level) {
-    const clamped = Math.max(0, Math.min(100, Number(score) || 0));
-    const arcLen = Math.round((clamped / 100) * 157);
-    return `
-      <div class="risk-gauge risk-${level}" aria-label="风险评分 ${clamped}">
-        <svg viewBox="0 0 120 68" class="risk-gauge-svg" aria-hidden="true">
-          <defs>
-            <linearGradient id="gaugeGrad-${level}" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" stop-color="#22c55e"/>
-              <stop offset="55%" stop-color="#f59e0b"/>
-              <stop offset="100%" stop-color="#ef4444"/>
-            </linearGradient>
-          </defs>
-          <path class="risk-gauge-track" d="M12 58 A48 48 0 0 1 108 58" />
-          <path class="risk-gauge-fill" d="M12 58 A48 48 0 0 1 108 58"
-            stroke="url(#gaugeGrad-${level})" stroke-dasharray="${arcLen} 157" />
-        </svg>
-        <span class="risk-gauge-value">${clamped}</span>
-        <span class="risk-gauge-label">风险评分</span>
-      </div>`;
-  }
-
   function formatLastContactDisplay(contract) {
     if (contract.recentCommunication) return escapeHtml(contract.recentCommunication);
     const d = new Date();
@@ -161,9 +140,8 @@ const UI = (() => {
   }
 
   function renderContractCard(c, isActive, dataLayer) {
-    const label = dataLayer.getRiskLabel(c.riskLevel);
     const demoBadge = c.isDemo
-      ? `<span class="card-demo-badge">${escapeHtml(DemoContracts.getScenarioLabel(c.demoScenario))}</span>`
+      ? `<span class="rail-demo-tag">${escapeHtml(DemoContracts.getScenarioLabel(c.demoScenario))}</span>`
       : "";
     return `
       <article
@@ -172,18 +150,15 @@ const UI = (() => {
         aria-selected="${isActive}"
         tabindex="0"
         data-id="${c.contractId}">
-        <div class="card-row card-row--top">
-          <span class="card-id">${escapeHtml(c.contractId)}</span>
+        <div class="rail-item-top">
+          <span class="rail-item-name">${escapeHtml(c.customerName)}</span>
+          <span class="rail-risk-dot risk-${c.riskLevel}" aria-label="${escapeHtml(dataLayer.getRiskLabel(c.riskLevel))}"></span>
+        </div>
+        <div class="rail-item-meta">
+          <span class="rail-item-overdue risk-text-${c.riskLevel}">${c.overdueDays}d overdue</span>
+          <span class="rail-item-score risk-text-${c.riskLevel}">${renderRiskScoreWithDelta(c.riskScore, c.lastRiskScoreDelta)}</span>
+          <span class="rail-item-id">${escapeHtml(c.contractId)}</span>
           ${demoBadge}
-          <span class="card-risk risk-${c.riskLevel}">${escapeHtml(label)}</span>
-        </div>
-        <div class="card-row card-row--mid">
-          <span class="card-customer">${escapeHtml(c.customerName)}</span>
-          <span class="card-amount">${dataLayer.formatAmount(c.loanAmount)}</span>
-        </div>
-        <div class="card-row card-row--bot">
-          <span class="card-overdue risk-text-${c.riskLevel}">逾期 ${c.overdueDays} 天</span>
-          <span class="card-score">风险评分 <strong>${c.riskScore}</strong></span>
         </div>
       </article>`;
   }
@@ -222,9 +197,9 @@ const UI = (() => {
 
     els.contractList.innerHTML = filtered.length
       ? filtered.map((c) => renderContractCard(c, selected?.contractId === c.contractId, dataLayer)).join("")
-      : `<div class="list-empty">无匹配合同</div>`;
+      : `<div class="list-empty">No matching contracts</div>`;
 
-    els.contractCount.textContent = `${dataLayer.getAll().length} 笔`;
+    els.contractCount.textContent = String(dataLayer.getAll().length);
   }
 
   function traitLevelClass(value, kind) {
@@ -250,162 +225,172 @@ const UI = (() => {
     return `<span class="summary-trait trait-reason">${escapeHtml(reason.name)}</span>${badge}`;
   }
 
-  function renderAntiCollectionAnalysis(assessment) {
+  function renderAntiCollectionIntel(assessment) {
     if (!assessment || assessment.level === 0) return "";
 
     const signals =
       assessment.matchedSignalLabels?.length > 0
-        ? assessment.matchedSignalLabels.join("、")
+        ? assessment.matchedSignalLabels.join(" · ")
         : "—";
-    const behaviorLabel = assessment.isAntiCollectionBehavior ? "是" : "否（合法维权）";
+    const behaviorLabel = assessment.isAntiCollectionBehavior
+      ? "Anti-collection behavior"
+      : "Legitimate rights protection";
 
     return `
-      <section class="anti-collection-analysis" aria-label="Anti-Collection Assessment">
-        <div class="anti-collection-head">
-          <h3 class="anti-collection-title">Anti-Collection Assessment</h3>
-          <span class="anti-collection-risk-badge ${assessment.riskCss}">${escapeHtml(assessment.risk)} Risk</span>
+      <div class="intel-insight">
+        <div class="intel-insight-head">
+          <span class="intel-insight-title">Anti-Collection</span>
+          <span class="intel-badge ${assessment.riskCss}">${escapeHtml(assessment.risk)}</span>
         </div>
-        <dl class="anti-collection-metrics">
-          <div class="anti-collection-metric">
-            <dt>Level</dt>
-            <dd>L${assessment.level} · ${escapeHtml(assessment.classificationZh)}</dd>
-          </div>
-          <div class="anti-collection-metric">
-            <dt>Matched Signals</dt>
-            <dd>${escapeHtml(signals)}</dd>
-          </div>
-          <div class="anti-collection-metric">
-            <dt>Confidence</dt>
-            <dd class="anti-collection-confidence">${assessment.confidenceScore}%</dd>
-          </div>
-          <div class="anti-collection-metric">
-            <dt>Anti-Collection?</dt>
-            <dd>${behaviorLabel}</dd>
-          </div>
-        </dl>
-        <div class="anti-collection-action">
-          <span class="anti-collection-action-label">Recommended Action</span>
-          <p>${escapeHtml(assessment.recommendedAction)}</p>
-        </div>
-      </section>`;
+        <p class="intel-insight-detail">L${assessment.level} · ${escapeHtml(assessment.classificationZh)}</p>
+        <p class="intel-insight-meta">${escapeHtml(behaviorLabel)} · ${assessment.confidenceScore}% confidence</p>
+        <p class="intel-insight-detail">${escapeHtml(signals)}</p>
+      </div>`;
   }
 
-  function renderCollateralAnalysis(c, dataLayer) {
+  function renderCollateralIntel(c, dataLayer) {
     const analysis = CollateralAnalyzer.analyze(c);
     if (!analysis) return "";
 
     const risk = analysis.collateralRisk;
     return `
-      <section class="collateral-analysis" aria-label="Collateral Analysis">
-        <div class="collateral-head">
-          <h3 class="collateral-title">Collateral Analysis</h3>
-          <span class="collateral-risk-badge ${risk.cssClass}">${escapeHtml(risk.label)}</span>
+      <div class="intel-insight">
+        <div class="intel-insight-head">
+          <span class="intel-insight-title">Collateral</span>
+          <span class="intel-badge ${risk.cssClass}">${escapeHtml(risk.label)}</span>
         </div>
-        <dl class="collateral-metrics">
-          <div class="collateral-metric">
-            <dt>Vehicle Information</dt>
-            <dd>${escapeHtml(c.vehicleBrand)} ${escapeHtml(c.vehicleModel)} · ${c.vehicleYear}</dd>
-          </div>
-          <div class="collateral-metric">
-            <dt>Outstanding Balance</dt>
-            <dd>${dataLayer.formatAmount(c.outstandingBalance)}</dd>
-          </div>
-          <div class="collateral-metric">
-            <dt>Market Value</dt>
-            <dd>${dataLayer.formatAmount(c.vehicleMarketValue)}</dd>
-          </div>
-          <div class="collateral-metric">
-            <dt>LTV</dt>
-            <dd class="collateral-ltv collateral-ltv--${risk.level}">${escapeHtml(analysis.ltvPercent)}</dd>
-          </div>
-          <div class="collateral-metric">
-            <dt>Recommended Asset Strategy</dt>
-            <dd class="collateral-strategy-label">${escapeHtml(analysis.strategyLabel)}</dd>
-          </div>
-        </dl>
-        <div class="collateral-strategy-reason">
-          <span class="collateral-strategy-reason-label">Strategy rationale</span>
-          <p>${escapeHtml(analysis.strategyReason)}</p>
-        </div>
-      </section>`;
+        <p class="intel-insight-detail">
+          ${escapeHtml(c.vehicleBrand)} ${escapeHtml(c.vehicleModel)} · LTV
+          <span class="collateral-ltv--${risk.level}">${escapeHtml(analysis.ltvPercent)}</span>
+        </p>
+        <p class="intel-insight-meta">${escapeHtml(analysis.strategyLabel)}</p>
+        <p class="intel-insight-detail">${escapeHtml(analysis.strategyReason)}</p>
+      </div>`;
   }
 
-  function renderContractSummary(dataLayer) {
-    if (!els.contractSummary) return;
+  function renderWorkspaceContext(dataLayer) {
+    if (!els.workspaceContext) return;
     const c = dataLayer.getSelected();
     if (!c) {
-      els.contractSummary.innerHTML = `<div class="contract-summary-empty">请从左侧选择一笔逾期合同</div>`;
-      els.contractSummary.className = "contract-summary";
+      els.workspaceContext.innerHTML = `<p class="workspace-context-empty">Select a contract to begin</p>`;
       return;
     }
 
     const label = dataLayer.getRiskLabel(c.riskLevel);
-    const score = c.riskScore;
+    const demoBadge = c.isDemo
+      ? `<span class="workspace-demo-badge">${escapeHtml(DemoContracts.getScenarioLabel(c.demoScenario))}</span>`
+      : "";
+
+    const overdueAmount = dataLayer.formatAmount(dataLayer.getOverdueAmount(c));
+
+    els.workspaceContext.innerHTML = `
+      <div class="workspace-context-active">
+        <span class="workspace-customer">${escapeHtml(c.customerName)}</span>
+        <div class="workspace-contract-meta">
+          <span class="workspace-contract-id">${escapeHtml(c.contractId)}</span>
+          <span class="workspace-risk-badge risk-${c.riskLevel}">${escapeHtml(label)}</span>
+          <span>${c.overdueDays} days overdue</span>
+          <span class="workspace-score risk-text-${c.riskLevel}">${renderRiskScoreWithDelta(c.riskScore, c.lastRiskScoreDelta)}</span>
+          <span class="workspace-overdue-amount risk-text-${c.riskLevel}">Overdue ${escapeHtml(overdueAmount)}</span>
+          ${demoBadge}
+        </div>
+      </div>`;
+  }
+
+  function renderIntelligencePanel(dataLayer) {
+    if (!els.intelligencePanel) return;
+    const c = dataLayer.getSelected();
+    if (!c) {
+      els.intelligencePanel.innerHTML = `
+        <div class="intel-empty">
+          <span class="intel-empty-label">Intelligence</span>
+          <p>Select a contract to view context, insights, and recommended actions.</p>
+        </div>`;
+      return;
+    }
 
     const p = c.customerProfile;
+    const label = dataLayer.getRiskLabel(c.riskLevel);
+    const actionPlan = ActionCategoryPicker.getNextStep(c.recommendedActionCategory);
+    const antiCol = AntiCollectionDetector.analyzeContract(c);
 
-    els.contractSummary.className = `contract-summary has-contract risk-${c.riskLevel}`;
-    els.contractSummary.innerHTML = `
-      <div class="summary-body">
-        <div class="summary-main">
-          <div class="summary-head">
-            <span class="summary-tag">当前合同</span>
-            <span class="summary-id">${escapeHtml(c.contractId)}</span>
-            ${c.isDemo ? `<span class="summary-demo-badge">${escapeHtml(DemoContracts.getScenarioLabel(c.demoScenario))}</span>` : ""}
-            <span class="summary-risk risk-${c.riskLevel}">${escapeHtml(label)}</span>
-          </div>
-          <dl class="summary-metrics">
-            <div class="summary-metric">
-              <dt>客户姓名</dt>
-              <dd>${escapeHtml(c.customerName)}</dd>
+    const overdueAmount = dataLayer.formatAmount(dataLayer.getOverdueAmount(c));
+
+    els.intelligencePanel.innerHTML = `
+      <div class="intel-panel">
+        <section class="intel-section">
+          <h3 class="intel-section-label">Information</h3>
+          <dl class="intel-facts">
+            <div class="intel-fact">
+              <dt>Overdue days</dt>
+              <dd class="risk-text-${c.riskLevel}">${c.overdueDays}</dd>
             </div>
-            <div class="summary-metric">
-              <dt>逾期天数</dt>
-              <dd class="risk-text-${c.riskLevel}">${c.overdueDays} 天</dd>
+            <div class="intel-fact">
+              <dt>Overdue amount</dt>
+              <dd class="risk-text-${c.riskLevel}">${overdueAmount}</dd>
             </div>
-            <div class="summary-metric">
-              <dt>逾期金额</dt>
-              <dd class="risk-text-${c.riskLevel}">${dataLayer.formatAmount(dataLayer.getOverdueAmount(c))}</dd>
+            <div class="intel-fact">
+              <dt>Outstanding balance</dt>
+              <dd>${dataLayer.formatAmount(c.outstandingBalance)}</dd>
             </div>
-            <div class="summary-metric">
-              <dt>贷款金额</dt>
+            <div class="intel-fact">
+              <dt>Loan amount</dt>
               <dd>${dataLayer.formatAmount(c.loanAmount)}</dd>
             </div>
-            <div class="summary-metric">
-              <dt>风险评分</dt>
-              <dd class="risk-text-${c.riskLevel}">${score}</dd>
-            </div>
-            <div class="summary-metric">
-              <dt>建议行动</dt>
-              <dd>${renderActionBadge(c.recommendedActionCategory)}</dd>
-            </div>
-            <div class="summary-metric">
-              <dt>还款意愿</dt>
+            <div class="intel-fact">
+              <dt>Repayment will</dt>
               <dd>${renderTraitValue(p.repaymentWillingness, "will")}</dd>
             </div>
-            <div class="summary-metric">
-              <dt>投诉倾向</dt>
+            <div class="intel-fact">
+              <dt>Complaint tendency</dt>
               <dd>${renderTraitValue(p.complaintTendency, "complaint")}</dd>
             </div>
-            <div class="summary-metric">
-              <dt>逾期原因</dt>
+            <div class="intel-fact">
+              <dt>Overdue reason</dt>
               <dd>${renderOverdueReason(c.overdueReason)}</dd>
             </div>
           </dl>
-          <div class="summary-communication">
-            <span class="summary-communication-label">最近沟通</span>
-            <p class="summary-communication-text">${formatLastContactDisplay(c)}</p>
+          <div class="intel-score-row">
+            <span class="intel-score-label">Risk score · ${escapeHtml(label)}</span>
+            <span class="intel-score-value risk-text-${c.riskLevel}">${renderRiskScoreWithDelta(c.riskScore, c.lastRiskScoreDelta)}</span>
           </div>
-        </div>
-        ${renderAntiCollectionAnalysis(AntiCollectionDetector.analyzeContract(c))}
-        ${renderCollateralAnalysis(c, dataLayer)}
-      </div>
-      <div class="summary-gauge">${renderRiskGauge(score, c.riskLevel)}</div>`;
+          <div class="intel-communication">
+            <span class="intel-communication-label">Recent communication</span>
+            <p class="intel-communication-text">${formatLastContactDisplay(c)}</p>
+          </div>
+        </section>
+
+        <section class="intel-section">
+          <h3 class="intel-section-label">Insight</h3>
+          ${renderCollateralIntel(c, dataLayer)}
+          ${renderAntiCollectionIntel(antiCol)}
+        </section>
+
+        <section class="intel-section intel-section--action">
+          <h3 class="intel-section-label">Action</h3>
+          <div class="intel-action-primary">${renderActionBadge(c.recommendedActionCategory)}</div>
+          <p class="intel-action-plan">${escapeHtml(actionPlan)}</p>
+        </section>
+      </div>`;
+  }
+
+  function renderContractContext(dataLayer) {
+    renderWorkspaceContext(dataLayer);
+    renderIntelligencePanel(dataLayer);
   }
 
   function formatScoreDelta(delta) {
     if (delta === 0) return "0";
     return delta > 0 ? `+${delta}` : String(delta);
+  }
+
+  function renderRiskScoreWithDelta(score, delta) {
+    const num = Number(score) || 0;
+    if (delta == null || delta === 0) {
+      return `<span class="risk-score-num">${num}</span>`;
+    }
+    const deltaClass = delta > 0 ? "score-delta--up" : "score-delta--down";
+    return `<span class="risk-score-num">${num}</span><span class="score-delta ${deltaClass}">(${formatScoreDelta(delta)})</span>`;
   }
 
   function renderActionBadge(categoryId) {
@@ -604,7 +589,7 @@ const UI = (() => {
   function formatScriptParagraphs(text) {
     const normalized = cleanChineseText(text);
     if (!normalized) {
-      return `<p class="script-quote-text script-quote-text--empty">暂无可用话术，请稍后重试或查看左侧建议行动。</p>`;
+      return `<p class="script-quote-text script-quote-text--empty">No script available. Review the recommended action in the intelligence panel.</p>`;
     }
 
     const parts = normalized
@@ -623,91 +608,52 @@ const UI = (() => {
 
   function renderStructuredPanel(data, message = {}, contract, dataLayer) {
     const display = normalizeDisplayFields(data);
-    const cp = display.customerProfile;
-    const kwDisplay = display.matchedKeywords.length ? display.matchedKeywords.join("、") : "无";
-    const reasonKwDisplay =
-      display.reasonMatchedKeywords?.length ? display.reasonMatchedKeywords.join("、") : null;
     const overdueReasonDisplay = display.overdueReason?.name
       ? `${display.overdueReason.name}${display.overdueReason.code ? ` (${display.overdueReason.code})` : ""}`
-      : "—";
+      : null;
     const executionPlan =
       cleanNextStep(display.nextStep) ||
       ActionCategoryPicker.getNextStep(display.recommendedActionCategory);
     const riskLevel = contract?.riskLevel || "yellow";
     const riskLabel = contract ? dataLayer.getRiskLabel(riskLevel) : "—";
-    const scoreDelta = formatScoreDelta(display.riskScoreDelta);
-    const deltaClass =
-      display.riskScoreDelta > 0 ? "kv-delta--up" : display.riskScoreDelta < 0 ? "kv-delta--down" : "";
+    const scoreDelta = display.riskScoreDelta ?? 0;
+    const scoreChip =
+      scoreDelta !== 0
+        ? `Score ${display.finalRiskScore} (${formatScoreDelta(scoreDelta)}) · ${riskLabel}`
+        : `Score ${display.finalRiskScore} (${riskLabel})`;
 
-    const finalScoreHtml = `
-      <span class="kv-score-display">
-        <span class="kv-score-num risk-text-${riskLevel}">${escapeHtml(String(display.finalRiskScore))}</span>
-        <span class="kv-score-level risk-${riskLevel}">${escapeHtml(riskLabel)}</span>
-      </span>`;
+    const insightChips = [
+      display.ruleId ? `Rule ${display.ruleId}` : null,
+      overdueReasonDisplay ? `Reason: ${overdueReasonDisplay}` : null,
+      scoreChip,
+      display.matchedKeywords?.length ? `Keywords: ${display.matchedKeywords.join(" · ")}` : null,
+      display.antiCollection?.level
+        ? `Anti-col L${display.antiCollection.level}`
+        : null,
+    ].filter(Boolean);
 
-    const scoreDeltaHtml = `
-      <span class="kv-delta ${deltaClass}">${escapeHtml(scoreDelta)}</span>`;
-
-    const kvItem = (label, value) => {
-      const ddContent =
-        value && typeof value === "object" && value.__html != null
-          ? value.__html
-          : escapeHtml(String(value ?? ""));
-      return `
-      <div class="kv-item">
-        <dt>${escapeHtml(label)}</dt>
-        <dd>${ddContent}</dd>
-      </div>`;
-    };
+    const scriptBody = display.reasonScripts
+      ? formatLayeredScripts(display.reasonScripts)
+      : formatScriptParagraphs(display.collectionScript);
 
     return `
-      <div class="response-card">
+      <div class="copilot-response">
         ${message.apiWarning ? `<div class="response-alert">${escapeHtml(message.apiWarning)}</div>` : ""}
-        <section class="response-col response-col--rules">
-          <h3 class="response-col-title">规则引擎输出</h3>
-          <dl class="kv-list">
-            ${kvItem("识别规则 ID", display.ruleId)}
-            ${kvItem("匹配类关键词", kwDisplay)}
-            ${reasonKwDisplay ? kvItem("逾期原因关键词", reasonKwDisplay) : ""}
-            ${kvItem("逾期原因标签", overdueReasonDisplay)}
-            ${kvItem("风险评分变化", { __html: scoreDeltaHtml })}
-            ${kvItem("最终风险评分", { __html: finalScoreHtml })}
-            ${kvItem("建议行动类别", { __html: renderActionBadge(display.recommendedActionCategory) })}
-          </dl>
-          <div class="rule-action-callout">
-            <span class="rule-action-callout-label">建议行动</span>
-            <p class="rule-action-callout-text">${escapeHtml(executionPlan)}</p>
+        <div class="copilot-action-block">
+          <span class="copilot-action-label">Recommended Action</span>
+          <div class="copilot-action-row">${renderActionBadge(display.recommendedActionCategory)}</div>
+          <p class="copilot-action-plan">${escapeHtml(executionPlan)}</p>
+        </div>
+        <div class="copilot-script-block">
+          <div class="copilot-script-head">
+            <span class="copilot-script-title">Collection Script</span>
+            <button type="button" class="btn-copy-script" aria-label="Copy script">Copy</button>
           </div>
-          ${renderAntiCollectionAnalysis(display.antiCollection)}
-        </section>
-        <section class="response-col">
-          <h3 class="response-col-title">客户特征</h3>
-          <dl class="kv-list kv-list--traits">
-            ${kvItem("性别/年龄", cp.genderAge)}
-            ${kvItem("职业", cp.occupation)}
-            ${kvItem("所在城市", cp.city)}
-            ${kvItem("收入水平", cp.incomeLevel)}
-            ${kvItem("婚姻状况", cp.maritalStatus)}
-            ${kvItem("联系偏好", cp.contactPreference)}
-            ${kvItem("逾期原因", overdueReasonDisplay)}
-          </dl>
-        </section>
-        <section class="response-col response-col--action">
-          <h3 class="response-col-title response-col-title--accent">催收话术</h3>
-          <div class="script-box">
-            <div class="script-box-head">
-              <span class="script-box-title">话术建议</span>
-              <button type="button" class="btn-copy-script" aria-label="复制话术">复制</button>
-            </div>
-            <div class="script-box-body">
-              ${
-                display.reasonScripts
-                  ? formatLayeredScripts(display.reasonScripts)
-                  : formatScriptParagraphs(display.collectionScript)
-              }
-            </div>
-          </div>
-        </section>
+          <div class="script-box-body">${scriptBody}</div>
+        </div>
+        <div class="copilot-insights">
+          ${insightChips.map((chip) => `<span class="insight-chip">${escapeHtml(chip)}</span>`).join("")}
+        </div>
       </div>`;
   }
 
@@ -731,8 +677,8 @@ const UI = (() => {
         <div class="message-row assistant structured" data-message-id="${escapeHtml(message.messageId || "")}">
           <div class="assistant-avatar" aria-hidden="true">AI</div>
           <div class="assistant-content">
-            <span class="assistant-name">AI 催收助手</span>
-            <div class="message-panel">${renderStructuredPanel(message.structured, message, contract, dataLayer)}</div>
+            <span class="assistant-name">Collection Copilot</span>
+            <div class="copilot-response-wrap">${renderStructuredPanel(message.structured, message, contract, dataLayer)}</div>
             ${renderFeedbackButtons(message)}
             ${time ? `<span class="message-time">${time}</span>` : ""}
           </div>
@@ -744,7 +690,7 @@ const UI = (() => {
         <div class="message-row assistant conversation" data-message-id="${escapeHtml(message.messageId || "")}">
           <div class="assistant-avatar" aria-hidden="true">AI</div>
           <div class="assistant-content">
-            <span class="assistant-name">AI 催收助手</span>
+            <span class="assistant-name">Collection Copilot</span>
             ${message.apiWarning ? `<div class="response-alert response-alert--inline">${escapeHtml(message.apiWarning)}</div>` : ""}
             <div class="message-bubble message-bubble--conversation">
               <div class="message-content">${formatAssistantText(message.text)}</div>
@@ -777,8 +723,8 @@ const UI = (() => {
           <div class="chat-empty-icon" aria-hidden="true">
             <svg viewBox="0 0 48 48" width="48" height="48"><path fill="currentColor" opacity="0.35" d="M8 10h32v24H8V10zm4 4v16h24V14H12zm6 20h12v3H18v-3z"/></svg>
           </div>
-          <p class="chat-empty-title">选择逾期合同</p>
-          <p class="chat-empty-hint">从左侧列表选择一笔合同，开始智能催收分析</p>
+          <p class="chat-empty-title">Select a contract</p>
+          <p class="chat-empty-hint">Choose a contract from the portfolio to start your collection analysis.</p>
         </div>`;
       return;
     }
@@ -789,9 +735,9 @@ const UI = (() => {
           <div class="chat-empty-icon" aria-hidden="true">
             <svg viewBox="0 0 48 48" width="48" height="48"><path fill="currentColor" opacity="0.35" d="M24 4C12.95 4 4 11.85 4 21.5c0 5.2 2.55 9.85 6.55 12.95L8 40l6.85-2.45C16.75 38.5 20.3 39 24 39c11.05 0 20-7.85 20-17.5S35.05 4 24 4zm-8 15h16v3H16v-3zm0 7h11v3H16v-3z"/></svg>
           </div>
-          <p class="chat-empty-title">已选中 <strong>${escapeHtml(contract.contractId)}</strong></p>
-          <p class="chat-empty-sub">${escapeHtml(contract.customerName)} · ${escapeHtml(dataLayer.formatAmount(contract.loanAmount))}</p>
-          <p class="chat-empty-hint">首次提问将展示合同分析信息卡，后续对话为自然语言交互</p>
+          <p class="chat-empty-title">${escapeHtml(contract.customerName)}</p>
+          <p class="chat-empty-sub">${escapeHtml(contract.contractId)} · Overdue ${escapeHtml(dataLayer.formatAmount(dataLayer.getOverdueAmount(contract)))}</p>
+          <p class="chat-empty-hint">Ask a question to generate an action plan and collection script. Follow-up messages continue as natural conversation.</p>
         </div>`;
       return;
     }
@@ -801,11 +747,11 @@ const UI = (() => {
   }
 
   function updateActiveContractBar(dataLayer) {
-    renderContractSummary(dataLayer);
+    renderContractContext(dataLayer);
   }
 
   function refresh(dataLayer) {
-    renderContractSummary(dataLayer);
+    renderContractContext(dataLayer);
     renderContractList(dataLayer);
     renderChat(dataLayer);
     updateAdoptionMetrics();
@@ -999,15 +945,17 @@ const UI = (() => {
 
     const copyBtn = e.target.closest(".btn-copy-script");
     if (copyBtn) {
-      const paragraphs = copyBtn.closest(".script-box")?.querySelectorAll(".script-quote-text");
+      const paragraphs =
+        copyBtn.closest(".copilot-script-block")?.querySelectorAll(".script-quote-text") ||
+        copyBtn.closest(".script-box")?.querySelectorAll(".script-quote-text");
       const text = paragraphs?.length
         ? Array.from(paragraphs)
             .map((p) => p.textContent.trim())
             .join("\n")
         : "";
       navigator.clipboard?.writeText(text).then(
-        () => showToast("话术已复制到剪贴板"),
-        () => showToast("复制失败，请手动选择文本")
+        () => showToast("Script copied"),
+        () => showToast("Copy failed")
       );
     }
   }
@@ -1034,7 +982,7 @@ const UI = (() => {
     els.sortOrder?.addEventListener("change", () => renderContractList(dataLayer));
 
     els.quickPrompts?.addEventListener("click", (e) => {
-      const btn = e.target.closest(".quick-prompt");
+      const btn = e.target.closest(".prompt-chip");
       if (!btn?.dataset.prompt) return;
       els.chatInput.value = btn.dataset.prompt;
       els.chatInput.focus();

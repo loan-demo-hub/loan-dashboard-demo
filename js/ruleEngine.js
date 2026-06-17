@@ -112,7 +112,7 @@ const RuleEngine = (() => {
       ruleId: rule.id,
       matchedKeywords: [...matchedKeywords],
       reasonMatchedKeywords: reasonContext?.matchedKeywords || [],
-      riskScoreDelta: rule.score_delta,
+      riskScoreDelta: scoreChange.newScore - scoreChange.oldScore,
       finalRiskScore: scoreChange.newScore,
       recommendedActionCategory,
       actionLabel: ActionCategoryPicker.getLabel(recommendedActionCategory),
@@ -143,7 +143,7 @@ const RuleEngine = (() => {
     const newScore = clampScore(oldScore + rule.score_delta);
     const newLevel = dataLayer.resolveRiskLevel(newScore);
 
-    dataLayer.updateRisk(contract.contractId, newScore, newLevel);
+    dataLayer.updateRisk(contract.contractId, newScore, newLevel, newScore - oldScore);
 
     const levelText =
       oldLevel === newLevel
@@ -153,7 +153,7 @@ const RuleEngine = (() => {
     return { oldScore, newScore, oldLevel, newLevel, levelText };
   }
 
-  function process(userInput, contract, dataLayer) {
+  function process(userInput, contract, dataLayer, options = {}) {
     if (!contract) {
       return {
       ok: false,
@@ -162,6 +162,7 @@ const RuleEngine = (() => {
     }
 
     const input = (userInput || "").trim();
+    const followUp = options.followUp === true;
     const rule = selectRule(input);
     const matchedKeywords = getMatchedKeywords(input, rule);
     let script = fillTemplate(rule.script_template, contract, dataLayer);
@@ -171,11 +172,20 @@ const RuleEngine = (() => {
       script = reasonContext.reasonScripts.combined;
     }
 
-    const scoreChange = applyScoreDelta(contract, rule, dataLayer);
-    const recommendedActionCategory = ActionCategoryPicker.pick(
-      contract.overdueDays,
-      dataLayer.getRules()
-    );
+    const scoreChange = followUp
+      ? {
+          oldScore: contract.riskScore,
+          newScore: contract.riskScore,
+          oldLevel: contract.riskLevel,
+          newLevel: contract.riskLevel,
+          levelText: dataLayer.getRiskLabel(contract.riskLevel),
+        }
+      : applyScoreDelta(contract, rule, dataLayer);
+
+    const recommendedActionCategory = followUp
+      ? contract.recommendedActionCategory
+      : ActionCategoryPicker.pick(contract.overdueDays, dataLayer.getRules());
+
     const antiCollection = AntiCollectionDetector.analyze(input, {
       recentCommunication: contract.recentCommunication,
       history: contract.history,

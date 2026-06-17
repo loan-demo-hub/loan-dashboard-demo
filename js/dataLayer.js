@@ -35,11 +35,14 @@ const DataLayer = (() => {
     return true;
   }
 
-  function updateRisk(contractId, riskScore, riskLevel) {
+  function updateRisk(contractId, riskScore, riskLevel, scoreDelta) {
     const c = getById(contractId);
     if (!c) return null;
     c.riskScore = ContractGenerator.clampScore(riskScore);
     c.riskLevel = riskLevel;
+    if (typeof scoreDelta === "number") {
+      c.lastRiskScoreDelta = scoreDelta;
+    }
     return c;
   }
 
