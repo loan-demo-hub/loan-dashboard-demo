@@ -115,6 +115,8 @@ const ReasonTagEngine = (() => {
   }
 
   function assignToContract(contract, index = 0) {
+    if (contract.isDemo && contract.overdueReason?.code) return contract;
+
     const tag = pickAssignTag(contract, index);
     contract.overdueReason = {
       code: tag.code,

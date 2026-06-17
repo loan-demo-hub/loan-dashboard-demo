@@ -2,15 +2,17 @@
 window.__MOCK_DATA_BUNDLE__ = {
   "mock-data/dataset_rules.yaml": {
     version: "1.0",
-    contract_count: 25,
+    contract_count: 20,
     contract_id: { prefix: "CR", digits: 9, seed_base: 100000001 },
     customer_names: [
       "张伟", "李娜", "王强", "陈静", "刘洋", "赵敏", "孙磊", "周婷", "吴刚", "郑丽",
       "黄浩", "林雪", "徐鹏", "马超", "胡芳", "郭亮", "何静", "高峰", "罗敏", "梁宇",
-      "宋佳", "唐勇", "韩梅", "冯涛", "曹阳",
+      "宋佳", "唐勇", "韩梅", "冯涛", "曹阳", "谢军", "邓华", "许琳", "傅强", "沈洁",
+      "曾辉", "彭丽", "吕刚", "苏敏", "卢伟", "蒋欣", "蔡明", "贾芳", "丁磊", "魏婷",
+      "薛斌", "叶静", "阎波", "余霞",
     ],
     loan_amount: { base: 20000, step: 37000, modulo: 480000 },
-    overdue_days: { base: 3, step: 7, modulo: 90 },
+    overdue_days: { min: 1, max: 210, base: 3, step: 7, modulo: 210 },
     initial_risk_score: {
       tiers: [
         { max_overdue: 9, score: 25 },
@@ -40,6 +42,17 @@ window.__MOCK_DATA_BUNDLE__ = {
       contact_preferences: ["电话", "短信", "微信", "邮件"],
       repayment_willingness: ["高", "中", "低"],
       age: { min: 26, max: 58 },
+    },
+    collateral: {
+      year: { min: 2016, max: 2023 },
+      brands: [
+        { name: "丰田", models: ["卡罗拉", "凯美瑞", "RAV4"] },
+        { name: "大众", models: ["朗逸", "帕萨特", "途观L"] },
+        { name: "本田", models: ["思域", "雅阁", "CR-V"] },
+        { name: "比亚迪", models: ["秦PLUS", "汉", "宋PLUS"] },
+        { name: "吉利", models: ["帝豪", "星越L", "博越"] },
+        { name: "宝马", models: ["3系", "5系", "X3"] },
+      ],
     },
     complaint_tendency: {
       levels: ["低", "中", "高"],

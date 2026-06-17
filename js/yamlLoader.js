@@ -12,6 +12,11 @@ const YamlLoader = (() => {
     if (v === "true") return true;
     if (v === "false") return false;
     if (/^-?\d+$/.test(v)) return parseInt(v, 10);
+    if (v.startsWith("[") && v.endsWith("]")) {
+      const inner = v.slice(1, -1).trim();
+      if (!inner) return [];
+      return inner.split(",").map((part) => parseScalar(part.trim()));
+    }
     if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
       return v.slice(1, -1);
     }
@@ -141,20 +146,20 @@ const YamlLoader = (() => {
   }
 
   function loadOffline(url) {
+    const bundle = window.__MOCK_DATA_BUNDLE__?.[url];
+    if (bundle) {
+      usedFallback = true;
+      return cloneData(bundle);
+    }
+
     const text = window.__YAML_FALLBACK__?.[url];
     if (text) {
       try {
         usedFallback = true;
         return parse(text);
       } catch {
-        /* fallback parse failed — try bundle next */
+        /* fallback parse failed */
       }
-    }
-
-    const bundle = window.__MOCK_DATA_BUNDLE__?.[url];
-    if (bundle) {
-      usedFallback = true;
-      return cloneData(bundle);
     }
 
     throw new Error(`Cannot load ${url}`);

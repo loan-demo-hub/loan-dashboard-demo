@@ -31,7 +31,90 @@ const UI = (() => {
       longcatModel: document.getElementById("longcatModel"),
       longcatUseProxy: document.getElementById("longcatUseProxy"),
       longcatBaseUrl: document.getElementById("longcatBaseUrl"),
+      adoptionMetrics: document.getElementById("adoptionMetrics"),
     };
+  }
+
+  function createMessageId() {
+    return `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+  }
+
+  function buildAssistantMessage(payload, contractId) {
+    const messageId = createMessageId();
+    FeedbackStore.registerMessage(messageId, { contractId });
+    const storedFeedback = FeedbackStore.getFeedback(messageId);
+    return {
+      role: "assistant",
+      messageId,
+      feedback: storedFeedback,
+      ...payload,
+    };
+  }
+
+  function syncMessageFeedback(message) {
+    if (message?.messageId && message.feedback == null) {
+      message.feedback = FeedbackStore.getFeedback(message.messageId);
+    }
+    return message;
+  }
+
+  function renderFeedbackButtons(message) {
+    if (!message.messageId) return "";
+    syncMessageFeedback(message);
+    const adoptedActive = message.feedback === "adopted" ? " active" : "";
+    const notAdoptedActive = message.feedback === "not_adopted" ? " active" : "";
+    return `
+      <div class="message-feedback" data-message-id="${escapeHtml(message.messageId)}">
+        <button
+          type="button"
+          class="btn-feedback btn-feedback--adopted${adoptedActive}"
+          data-feedback="adopted"
+          aria-pressed="${message.feedback === "adopted"}"
+          aria-label="Adopted">
+          👍 Adopted
+        </button>
+        <button
+          type="button"
+          class="btn-feedback btn-feedback--not-adopted${notAdoptedActive}"
+          data-feedback="not_adopted"
+          aria-pressed="${message.feedback === "not_adopted"}"
+          aria-label="Not adopted">
+          👎 Not adopted
+        </button>
+      </div>`;
+  }
+
+  function updateAdoptionMetrics() {
+    if (!els.adoptionMetrics) return;
+    const m = FeedbackStore.getMetrics();
+    els.adoptionMetrics.innerHTML = `
+      <div class="adoption-metric">
+        <span class="adoption-metric-label">AI累计建议：</span>
+        <span class="adoption-metric-value">${m.totalAssistantResponses}<span class="adoption-metric-unit">条</span></span>
+      </div>
+      <div class="adoption-metric">
+        <span class="adoption-metric-label">已评价：</span>
+        <span class="adoption-metric-value">${m.ratedCount}<span class="adoption-metric-unit">条</span></span>
+      </div>
+      <div class="adoption-metric adoption-metric--rate">
+        <span class="adoption-metric-label">整体采纳率：</span>
+        <span class="adoption-metric-value">${escapeHtml(m.adoptionRatePercent)}</span>
+      </div>`;
+  }
+
+  function applyFeedbackToMessage(messageId, feedback) {
+    const msg = chatHistory.find((m) => m.messageId === messageId);
+    if (msg) msg.feedback = feedback;
+    FeedbackStore.setFeedback(messageId, feedback);
+    updateAdoptionMetrics();
+  }
+
+  function updateFeedbackButtonsInDom(container, feedback) {
+    container.querySelectorAll(".btn-feedback").forEach((btn) => {
+      const isActive = btn.dataset.feedback === feedback;
+      btn.classList.toggle("active", isActive);
+      btn.setAttribute("aria-pressed", String(isActive));
+    });
   }
 
   function escapeHtml(str) {
@@ -71,6 +154,7 @@ const UI = (() => {
   }
 
   function formatLastContactDisplay(contract) {
+    if (contract.recentCommunication) return escapeHtml(contract.recentCommunication);
     const d = new Date();
     d.setDate(d.getDate() - Math.min(Math.max(contract.overdueDays - 7, 1), 45));
     return d.toLocaleDateString("zh-CN");
@@ -78,15 +162,19 @@ const UI = (() => {
 
   function renderContractCard(c, isActive, dataLayer) {
     const label = dataLayer.getRiskLabel(c.riskLevel);
+    const demoBadge = c.isDemo
+      ? `<span class="card-demo-badge">${escapeHtml(DemoContracts.getScenarioLabel(c.demoScenario))}</span>`
+      : "";
     return `
       <article
-        class="contract-card${isActive ? " active" : ""}"
+        class="contract-card${isActive ? " active" : ""}${c.isDemo ? " contract-card--demo" : ""}"
         role="option"
         aria-selected="${isActive}"
         tabindex="0"
         data-id="${c.contractId}">
         <div class="card-row card-row--top">
           <span class="card-id">${escapeHtml(c.contractId)}</span>
+          ${demoBadge}
           <span class="card-risk risk-${c.riskLevel}">${escapeHtml(label)}</span>
         </div>
         <div class="card-row card-row--mid">
@@ -101,15 +189,20 @@ const UI = (() => {
   }
 
   function sortContracts(list, order) {
-    const sorted = [...list];
+    const demos = list.filter((c) => c.isDemo);
+    const rest = list.filter((c) => !c.isDemo);
+    const sorted = [...rest];
     switch (order) {
       case "score_desc":
-        return sorted.sort((a, b) => b.riskScore - a.riskScore);
+        sorted.sort((a, b) => b.riskScore - a.riskScore);
+        break;
       case "amount_desc":
-        return sorted.sort((a, b) => b.loanAmount - a.loanAmount);
+        sorted.sort((a, b) => b.loanAmount - a.loanAmount);
+        break;
       default:
-        return sorted.sort((a, b) => b.overdueDays - a.overdueDays);
+        sorted.sort((a, b) => b.overdueDays - a.overdueDays);
     }
+    return [...demos, ...sorted];
   }
 
   function renderContractList(dataLayer) {
@@ -157,6 +250,86 @@ const UI = (() => {
     return `<span class="summary-trait trait-reason">${escapeHtml(reason.name)}</span>${badge}`;
   }
 
+  function renderAntiCollectionAnalysis(assessment) {
+    if (!assessment || assessment.level === 0) return "";
+
+    const signals =
+      assessment.matchedSignalLabels?.length > 0
+        ? assessment.matchedSignalLabels.join("、")
+        : "—";
+    const behaviorLabel = assessment.isAntiCollectionBehavior ? "是" : "否（合法维权）";
+
+    return `
+      <section class="anti-collection-analysis" aria-label="Anti-Collection Assessment">
+        <div class="anti-collection-head">
+          <h3 class="anti-collection-title">Anti-Collection Assessment</h3>
+          <span class="anti-collection-risk-badge ${assessment.riskCss}">${escapeHtml(assessment.risk)} Risk</span>
+        </div>
+        <dl class="anti-collection-metrics">
+          <div class="anti-collection-metric">
+            <dt>Level</dt>
+            <dd>L${assessment.level} · ${escapeHtml(assessment.classificationZh)}</dd>
+          </div>
+          <div class="anti-collection-metric">
+            <dt>Matched Signals</dt>
+            <dd>${escapeHtml(signals)}</dd>
+          </div>
+          <div class="anti-collection-metric">
+            <dt>Confidence</dt>
+            <dd class="anti-collection-confidence">${assessment.confidenceScore}%</dd>
+          </div>
+          <div class="anti-collection-metric">
+            <dt>Anti-Collection?</dt>
+            <dd>${behaviorLabel}</dd>
+          </div>
+        </dl>
+        <div class="anti-collection-action">
+          <span class="anti-collection-action-label">Recommended Action</span>
+          <p>${escapeHtml(assessment.recommendedAction)}</p>
+        </div>
+      </section>`;
+  }
+
+  function renderCollateralAnalysis(c, dataLayer) {
+    const analysis = CollateralAnalyzer.analyze(c);
+    if (!analysis) return "";
+
+    const risk = analysis.collateralRisk;
+    return `
+      <section class="collateral-analysis" aria-label="Collateral Analysis">
+        <div class="collateral-head">
+          <h3 class="collateral-title">Collateral Analysis</h3>
+          <span class="collateral-risk-badge ${risk.cssClass}">${escapeHtml(risk.label)}</span>
+        </div>
+        <dl class="collateral-metrics">
+          <div class="collateral-metric">
+            <dt>Vehicle Information</dt>
+            <dd>${escapeHtml(c.vehicleBrand)} ${escapeHtml(c.vehicleModel)} · ${c.vehicleYear}</dd>
+          </div>
+          <div class="collateral-metric">
+            <dt>Outstanding Balance</dt>
+            <dd>${dataLayer.formatAmount(c.outstandingBalance)}</dd>
+          </div>
+          <div class="collateral-metric">
+            <dt>Market Value</dt>
+            <dd>${dataLayer.formatAmount(c.vehicleMarketValue)}</dd>
+          </div>
+          <div class="collateral-metric">
+            <dt>LTV</dt>
+            <dd class="collateral-ltv collateral-ltv--${risk.level}">${escapeHtml(analysis.ltvPercent)}</dd>
+          </div>
+          <div class="collateral-metric">
+            <dt>Recommended Asset Strategy</dt>
+            <dd class="collateral-strategy-label">${escapeHtml(analysis.strategyLabel)}</dd>
+          </div>
+        </dl>
+        <div class="collateral-strategy-reason">
+          <span class="collateral-strategy-reason-label">Strategy rationale</span>
+          <p>${escapeHtml(analysis.strategyReason)}</p>
+        </div>
+      </section>`;
+  }
+
   function renderContractSummary(dataLayer) {
     if (!els.contractSummary) return;
     const c = dataLayer.getSelected();
@@ -173,50 +346,59 @@ const UI = (() => {
 
     els.contractSummary.className = `contract-summary has-contract risk-${c.riskLevel}`;
     els.contractSummary.innerHTML = `
-      <div class="summary-main">
-        <div class="summary-head">
-          <span class="summary-tag">当前合同</span>
-          <span class="summary-id">${escapeHtml(c.contractId)}</span>
-          <span class="summary-risk risk-${c.riskLevel}">${escapeHtml(label)}</span>
+      <div class="summary-body">
+        <div class="summary-main">
+          <div class="summary-head">
+            <span class="summary-tag">当前合同</span>
+            <span class="summary-id">${escapeHtml(c.contractId)}</span>
+            ${c.isDemo ? `<span class="summary-demo-badge">${escapeHtml(DemoContracts.getScenarioLabel(c.demoScenario))}</span>` : ""}
+            <span class="summary-risk risk-${c.riskLevel}">${escapeHtml(label)}</span>
+          </div>
+          <dl class="summary-metrics">
+            <div class="summary-metric">
+              <dt>客户姓名</dt>
+              <dd>${escapeHtml(c.customerName)}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>逾期天数</dt>
+              <dd class="risk-text-${c.riskLevel}">${c.overdueDays} 天</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>逾期金额</dt>
+              <dd class="risk-text-${c.riskLevel}">${dataLayer.formatAmount(dataLayer.getOverdueAmount(c))}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>贷款金额</dt>
+              <dd>${dataLayer.formatAmount(c.loanAmount)}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>风险评分</dt>
+              <dd class="risk-text-${c.riskLevel}">${score}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>建议行动</dt>
+              <dd>${renderActionBadge(c.recommendedActionCategory)}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>还款意愿</dt>
+              <dd>${renderTraitValue(p.repaymentWillingness, "will")}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>投诉倾向</dt>
+              <dd>${renderTraitValue(p.complaintTendency, "complaint")}</dd>
+            </div>
+            <div class="summary-metric">
+              <dt>逾期原因</dt>
+              <dd>${renderOverdueReason(c.overdueReason)}</dd>
+            </div>
+          </dl>
+          <div class="summary-communication">
+            <span class="summary-communication-label">最近沟通</span>
+            <p class="summary-communication-text">${formatLastContactDisplay(c)}</p>
+          </div>
         </div>
-        <dl class="summary-metrics">
-          <div class="summary-metric">
-            <dt>客户姓名</dt>
-            <dd>${escapeHtml(c.customerName)}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>逾期天数</dt>
-            <dd class="risk-text-${c.riskLevel}">${c.overdueDays} 天</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>逾期金额</dt>
-            <dd class="risk-text-${c.riskLevel}">${dataLayer.formatAmount(dataLayer.getOverdueAmount(c))}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>贷款金额</dt>
-            <dd>${dataLayer.formatAmount(c.loanAmount)}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>风险评分</dt>
-            <dd class="risk-text-${c.riskLevel}">${score}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>上次沟通</dt>
-            <dd>${formatLastContactDisplay(c)}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>还款意愿</dt>
-            <dd>${renderTraitValue(p.repaymentWillingness, "will")}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>投诉倾向</dt>
-            <dd>${renderTraitValue(p.complaintTendency, "complaint")}</dd>
-          </div>
-          <div class="summary-metric">
-            <dt>逾期原因</dt>
-            <dd>${renderOverdueReason(c.overdueReason)}</dd>
-          </div>
-        </dl>
+        ${renderAntiCollectionAnalysis(AntiCollectionDetector.analyzeContract(c))}
+        ${renderCollateralAnalysis(c, dataLayer)}
       </div>
       <div class="summary-gauge">${renderRiskGauge(score, c.riskLevel)}</div>`;
   }
@@ -496,6 +678,7 @@ const UI = (() => {
             <span class="rule-action-callout-label">建议行动</span>
             <p class="rule-action-callout-text">${escapeHtml(executionPlan)}</p>
           </div>
+          ${renderAntiCollectionAnalysis(display.antiCollection)}
         </section>
         <section class="response-col">
           <h3 class="response-col-title">客户特征</h3>
@@ -545,11 +728,12 @@ const UI = (() => {
 
     if (!isUser && message.structured) {
       return `
-        <div class="message-row assistant structured">
+        <div class="message-row assistant structured" data-message-id="${escapeHtml(message.messageId || "")}">
           <div class="assistant-avatar" aria-hidden="true">AI</div>
           <div class="assistant-content">
             <span class="assistant-name">AI 催收助手</span>
             <div class="message-panel">${renderStructuredPanel(message.structured, message, contract, dataLayer)}</div>
+            ${renderFeedbackButtons(message)}
             ${time ? `<span class="message-time">${time}</span>` : ""}
           </div>
         </div>`;
@@ -557,7 +741,7 @@ const UI = (() => {
 
     if (!isUser && message.text) {
       return `
-        <div class="message-row assistant conversation">
+        <div class="message-row assistant conversation" data-message-id="${escapeHtml(message.messageId || "")}">
           <div class="assistant-avatar" aria-hidden="true">AI</div>
           <div class="assistant-content">
             <span class="assistant-name">AI 催收助手</span>
@@ -565,6 +749,7 @@ const UI = (() => {
             <div class="message-bubble message-bubble--conversation">
               <div class="message-content">${formatAssistantText(message.text)}</div>
             </div>
+            ${renderFeedbackButtons(message)}
             ${time ? `<span class="message-time">${time}</span>` : ""}
           </div>
         </div>`;
@@ -623,6 +808,7 @@ const UI = (() => {
     renderContractSummary(dataLayer);
     renderContractList(dataLayer);
     renderChat(dataLayer);
+    updateAdoptionMetrics();
     els.clearChatBtn.disabled = chatHistory.length === 0;
   }
 
@@ -670,39 +856,56 @@ const UI = (() => {
     Promise.resolve(assistantPromise)
       .then((assistantResult) => {
         hideTyping();
+        const contractId = dataLayer.getSelected()?.contractId;
         if (assistantResult.ok && assistantResult.structured) {
-          chatHistory.push({
-            role: "assistant",
-            structured: assistantResult.structured,
-            time,
-            source: assistantResult.source,
-            apiWarning: assistantResult.apiWarning,
-          });
+          chatHistory.push(
+            buildAssistantMessage(
+              {
+                structured: assistantResult.structured,
+                time,
+                source: assistantResult.source,
+                apiWarning: assistantResult.apiWarning,
+              },
+              contractId
+            )
+          );
         } else if (assistantResult.ok && assistantResult.text) {
-          chatHistory.push({
-            role: "assistant",
-            text: assistantResult.text,
-            time,
-            source: assistantResult.source,
-            apiWarning: assistantResult.apiWarning,
-          });
+          chatHistory.push(
+            buildAssistantMessage(
+              {
+                text: assistantResult.text,
+                time,
+                source: assistantResult.source,
+                apiWarning: assistantResult.apiWarning,
+              },
+              contractId
+            )
+          );
         } else {
-          chatHistory.push({
-            role: "assistant",
-            text: assistantResult.message || "处理失败",
-            time,
-          });
+          chatHistory.push(
+            buildAssistantMessage(
+              {
+                text: assistantResult.message || "处理失败",
+                time,
+              },
+              contractId
+            )
+          );
         }
         refresh(dataLayer);
         els.chatInput.focus();
       })
       .catch((err) => {
         hideTyping();
-        chatHistory.push({
-          role: "assistant",
-          text: `请求失败：${err.message}`,
-          time,
-        });
+        chatHistory.push(
+          buildAssistantMessage(
+            {
+              text: `请求失败：${err.message}`,
+              time,
+            },
+            dataLayer.getSelected()?.contractId
+          )
+        );
         refresh(dataLayer);
         els.chatInput.focus();
       })
@@ -782,6 +985,18 @@ const UI = (() => {
   }
 
   function handlePanelAction(e) {
+    const feedbackBtn = e.target.closest(".btn-feedback");
+    if (feedbackBtn) {
+      const container = feedbackBtn.closest(".message-feedback");
+      const messageId = container?.dataset.messageId;
+      const feedback = feedbackBtn.dataset.feedback;
+      if (messageId && (feedback === "adopted" || feedback === "not_adopted")) {
+        applyFeedbackToMessage(messageId, feedback);
+        updateFeedbackButtonsInDom(container, feedback);
+      }
+      return;
+    }
+
     const copyBtn = e.target.closest(".btn-copy-script");
     if (copyBtn) {
       const paragraphs = copyBtn.closest(".script-box")?.querySelectorAll(".script-quote-text");
@@ -853,10 +1068,12 @@ const UI = (() => {
 
   function init(dataLayer, sendHandler) {
     cacheElements();
+    FeedbackStore.load();
     onSendMessage = sendHandler;
     bindEvents(dataLayer);
     bindLongCatSettings();
     updateAiModeBadge();
+    updateAdoptionMetrics();
   }
 
   function setLoadStatus(text, isError = false) {

@@ -1,9 +1,5 @@
 /**
- * Contract Generator — mock dataset with random customer profiles.
- *
- * Contract fields:
- *   contractId, customerName, loanAmount, overdueAmount, overdueDays, riskScore, riskLevel,
- *   customerProfile, history
+ * Contract Generator — mock dataset with demo showcase + random profiles.
  */
 const ContractGenerator = (() => {
   const SCHEMA_KEYS = [
@@ -14,6 +10,15 @@ const ContractGenerator = (() => {
     "overdueDays",
     "riskScore",
     "riskLevel",
+    "vehicleBrand",
+    "vehicleModel",
+    "vehicleYear",
+    "outstandingBalance",
+    "vehicleMarketValue",
+    "recentCommunication",
+    "recommendedActionCategory",
+    "isDemo",
+    "demoScenario",
     "customerProfile",
     "history",
   ];
@@ -113,6 +118,12 @@ const ContractGenerator = (() => {
     return entries.sort((a, b) => b.date.localeCompare(a.date));
   }
 
+  function deriveRecentCommunication(history) {
+    if (!history?.length) return "暂无沟通记录";
+    const latest = history[0];
+    return `${latest.date} ${latest.action}：${latest.result}`;
+  }
+
   function computeOverdueAmount(loanAmount, overdueDays) {
     const monthlyPayment = Math.max(1, Math.round(loanAmount / 36));
     const overdueMonths = Math.max(1, Math.ceil(overdueDays / 30));
@@ -121,19 +132,96 @@ const ContractGenerator = (() => {
     return Math.min(loanAmount, Math.max(monthlyPayment, amount));
   }
 
+  function generateCollateral(index, collateralRules, loanAmount) {
+    if (!collateralRules?.brands?.length) {
+      throw new Error("collateral.brands missing from dataset_rules.yaml");
+    }
+
+    const brands = collateralRules.brands;
+    const brandEntry = brands[index % brands.length];
+    const model =
+      brandEntry.models[(index + Math.floor(index / brands.length)) % brandEntry.models.length];
+    const yearSpan = collateralRules.year.max - collateralRules.year.min + 1;
+    const vehicleYear = collateralRules.year.min + ((index * 2) % yearSpan);
+
+    const targetLtv = 0.72 + ((index * 17) % 58) / 100;
+    const outstandingBalance = Math.round(loanAmount * (0.52 + (index % 9) * 0.05));
+    const vehicleMarketValue = Math.max(10000, Math.round(outstandingBalance / targetLtv));
+
+    return {
+      vehicleBrand: brandEntry.name,
+      vehicleModel: model,
+      vehicleYear,
+      outstandingBalance,
+      vehicleMarketValue,
+    };
+  }
+
+  function computeOverdueDays(index, rules, randomCount) {
+    const od = rules.overdue_days;
+    const count = randomCount;
+    if (od.max != null) {
+      const min = od.min ?? 1;
+      const max = od.max;
+      if (count <= 1) return max;
+      return min + Math.round((index * (max - min)) / (count - 1));
+    }
+    return ((od.base + index * od.step) % od.modulo) + 1;
+  }
+
+  function buildDemoContract(template, complaintRules) {
+    const profile = {
+      ...template.customerProfile,
+      complaintSuggestedAction: lookupComplaintAction(
+        template.customerProfile.complaintTendency,
+        complaintRules
+      ),
+    };
+    const history = [...template.history].sort((a, b) => b.date.localeCompare(a.date));
+
+    const contract = {
+      contractId: template.contractId,
+      customerName: template.customerName,
+      loanAmount: template.loanAmount,
+      overdueAmount: computeOverdueAmount(template.loanAmount, template.overdueDays),
+      overdueDays: template.overdueDays,
+      riskScore: clampScore(template.riskScore),
+      riskLevel: template.riskLevel || deriveRiskLevel(template.riskScore),
+      vehicleBrand: template.vehicleBrand,
+      vehicleModel: template.vehicleModel,
+      vehicleYear: template.vehicleYear,
+      outstandingBalance: template.outstandingBalance,
+      vehicleMarketValue: template.vehicleMarketValue,
+      recentCommunication: template.recentCommunication,
+      recommendedActionCategory: template.recommendedActionCategory,
+      isDemo: true,
+      demoScenario: template.demoScenario,
+      customerProfile: profile,
+      history,
+    };
+
+    assertSchema(contract);
+
+    if (template.overdueReason?.code) {
+      contract.overdueReason = { ...template.overdueReason };
+    }
+
+    return contract;
+  }
+
   function buildContract(index, rules) {
     const {
       contract_id,
       customer_names,
       loan_amount,
-      overdue_days,
       initial_risk_score,
       history,
       customer_traits,
     } = rules;
 
-    const overdueDays =
-      ((overdue_days.base + index * overdue_days.step) % overdue_days.modulo) + 1;
+    const randomCount = rules._randomCount ?? rules.contract_count;
+    const randomIndex = index - DemoContracts.COUNT;
+    const overdueDays = computeOverdueDays(randomIndex, rules, randomCount);
     const loanAmount =
       ((loan_amount.base + (index + 1) * loan_amount.step) % loan_amount.modulo) +
       loan_amount.base;
@@ -141,6 +229,8 @@ const ContractGenerator = (() => {
     const riskScore = initialRiskScore(overdueDays, initial_risk_score.tiers);
     const riskLevel = deriveRiskLevel(riskScore);
     const contractId = `${contract_id.prefix}${String(contract_id.seed_base + index).padStart(contract_id.digits, "0")}`;
+    const collateral = generateCollateral(index, rules.collateral, loanAmount);
+    const historyEntries = generateHistory(index, overdueDays, history);
 
     const contract = {
       contractId,
@@ -150,8 +240,13 @@ const ContractGenerator = (() => {
       overdueDays,
       riskScore,
       riskLevel,
+      ...collateral,
+      recentCommunication: deriveRecentCommunication(historyEntries),
+      recommendedActionCategory: ActionCategoryPicker.pick(overdueDays, rules),
+      isDemo: false,
+      demoScenario: "",
       customerProfile: generateCustomerProfile(customer_traits),
-      history: generateHistory(index, overdueDays, history),
+      history: historyEntries,
     };
 
     assertSchema(contract);
@@ -177,14 +272,30 @@ const ContractGenerator = (() => {
 
   function generate(rules) {
     const count = rules.contract_count;
-    if (count < 20 || count > 30) {
-      throw new Error(`contract_count must be 20–30, got ${count}`);
+    if (count < 20 || count > 50) {
+      throw new Error(`contract_count must be 20–50, got ${count}`);
     }
     if (!rules.customer_traits || !rules.complaint_tendency) {
       throw new Error("customer_traits or complaint_tendency missing from dataset_rules.yaml");
     }
+
+    const demoCount = DemoContracts.COUNT;
+    const randomCount = count - demoCount;
+    if (randomCount < 1) {
+      throw new Error(`contract_count must exceed demo count (${demoCount})`);
+    }
+
     const traits = { ...rules.customer_traits, complaint_tendency: rules.complaint_tendency };
-    return Array.from({ length: count }, (_, i) => buildContract(i, { ...rules, customer_traits: traits }));
+    const enrichedRules = { ...rules, customer_traits: traits, _randomCount: randomCount };
+
+    const demos = DemoContracts.TEMPLATES.map((template) =>
+      buildDemoContract(template, rules.complaint_tendency)
+    );
+    const random = Array.from({ length: randomCount }, (_, i) =>
+      buildContract(i + demoCount, enrichedRules)
+    );
+
+    return [...demos, ...random];
   }
 
   function formatProfileSummary(profile) {

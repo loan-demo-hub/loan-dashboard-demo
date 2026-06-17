@@ -281,6 +281,21 @@ body {
   box-shadow: 0 0 0 1px var(--primary);
 }
 
+.contract-card--demo {
+  border-left: 3px solid #6366f1;
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.04) 0%, var(--surface) 24%);
+}
+
+.card-demo-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  white-space: nowrap;
+}
+
 .card-row {
   display: flex;
   align-items: center;
@@ -459,6 +474,234 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.summary-demo-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+}
+
+.summary-communication {
+  padding: var(--space-2);
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+}
+
+.summary-communication-label {
+  display: block;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.summary-communication-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.summary-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Collateral analysis */
+.collateral-analysis {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--space-2);
+}
+
+.collateral-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.collateral-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+
+.collateral-risk-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.collateral-risk-low {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.collateral-risk-medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.collateral-risk-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.collateral-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.collateral-metric dt {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.collateral-metric dd {
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.collateral-ltv--low { color: #15803d; }
+.collateral-ltv--medium { color: #b45309; }
+.collateral-ltv--high { color: #b91c1c; }
+
+.collateral-strategy-label {
+  color: var(--primary);
+}
+
+.collateral-strategy-reason {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.collateral-strategy-reason-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.collateral-strategy-reason p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+/* Anti-collection assessment */
+.anti-collection-analysis {
+  border-top: 1px solid var(--border-light);
+  padding-top: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.anti-collection-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.anti-collection-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.anti-collection-risk-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.anti-col-risk-none {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.anti-col-risk-low {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.anti-col-risk-medium {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.anti-col-risk-high {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.anti-collection-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.anti-collection-metric dt {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.anti-collection-metric dd {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.anti-collection-confidence {
+  color: var(--primary);
+}
+
+.anti-collection-action {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+}
+
+.anti-collection-action-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.anti-collection-action p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+
 /* Risk gauge */
 .risk-gauge {
   position: relative;
@@ -522,6 +765,91 @@ body {
   border-bottom: 1px solid var(--border-light);
   flex-shrink: 0;
   background: linear-gradient(180deg, #fafbfd 0%, var(--surface) 100%);
+  gap: var(--space-2);
+}
+
+.chat-zone-header-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  flex: 1;
+}
+
+.adoption-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.adoption-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.adoption-metric-value {
+  font-size: var(--font-sm);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.adoption-metric-unit {
+  font-size: var(--font-xs);
+  font-weight: 600;
+  margin-left: 1px;
+}
+
+.adoption-metric--rate .adoption-metric-value {
+  color: var(--primary);
+}
+
+.adoption-metric-label {
+  font-size: var(--font-xs);
+  color: var(--text-muted);
+}
+
+.message-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border-light);
+}
+
+.btn-feedback {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-feedback:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(47, 107, 255, 0.04);
+}
+
+.btn-feedback.active.btn-feedback--adopted {
+  border-color: var(--success);
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.btn-feedback.active.btn-feedback--not-adopted {
+  border-color: var(--danger);
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .chat-zone-title {
@@ -1300,6 +1628,10 @@ body {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
+  .collateral-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .response-card {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
@@ -1320,6 +1652,10 @@ body {
 
   .summary-metrics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .collateral-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .response-card {
@@ -1362,6 +1698,10 @@ body {
 
   .summary-metrics {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .collateral-metrics {
+    grid-template-columns: 1fr;
   }
 
   .message-row.user {

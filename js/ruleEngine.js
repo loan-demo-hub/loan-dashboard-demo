@@ -95,7 +95,8 @@ const RuleEngine = (() => {
     collectionScript,
     contract,
     recommendedActionCategory,
-    reasonContext
+    reasonContext,
+    antiCollection
   ) {
     const p = contract.customerProfile;
     const overdueReason =
@@ -128,6 +129,7 @@ const RuleEngine = (() => {
         contactPreference: p.contactPreference,
         repaymentWillingness: p.repaymentWillingness,
       },
+      antiCollection,
     };
   }
 
@@ -174,6 +176,10 @@ const RuleEngine = (() => {
       contract.overdueDays,
       dataLayer.getRules()
     );
+    const antiCollection = AntiCollectionDetector.analyze(input, {
+      recentCommunication: contract.recentCommunication,
+      history: contract.history,
+    });
     const structured = buildAnalysisOutput(
       rule,
       matchedKeywords,
@@ -181,7 +187,8 @@ const RuleEngine = (() => {
       script,
       contract,
       recommendedActionCategory,
-      reasonContext
+      reasonContext,
+      antiCollection
     );
 
     return {

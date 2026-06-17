@@ -47,6 +47,7 @@ const AIService = (() => {
           nextStep: enhanced.nextStep,
           reasonScripts: ruleResult.structured.reasonScripts,
           overdueReason: ruleResult.structured.overdueReason,
+          antiCollection: ruleResult.structured.antiCollection,
         },
       };
     } catch (err) {

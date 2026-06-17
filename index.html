@@ -60,7 +60,10 @@
 
       <div class="chat-zone">
         <div class="chat-zone-header">
-          <h2 class="chat-zone-title">AI 催收助手</h2>
+          <div class="chat-zone-header-main">
+            <h2 class="chat-zone-title">AI 催收助手</h2>
+            <div class="adoption-metrics" id="adoptionMetrics" aria-label="采纳率指标"></div>
+          </div>
           <button type="button" class="btn-text" id="clearChatBtn" disabled>清空对话</button>
         </div>
         <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="聊天消息"></div>
@@ -132,14 +135,18 @@
   <script src="js/yamlFallback.js"></script>
   <script src="js/mockDataBundle.js"></script>
   <script src="js/overdueReasonTagsBundle.js"></script>
+  <script src="js/demoContracts.js"></script>
   <script src="js/contractGenerator.js"></script>
+  <script src="js/collateralAnalyzer.js"></script>
   <script src="js/actionCategoryPicker.js"></script>
   <script src="js/reasonTagEngine.js"></script>
+  <script src="js/antiCollectionDetector.js"></script>
   <script src="js/dataLayer.js"></script>
   <script src="js/ruleEngine.js"></script>
   <script src="js/longcatConfig.js"></script>
   <script src="js/longcatClient.js"></script>
   <script src="js/aiService.js"></script>
+  <script src="js/feedbackStore.js"></script>
   <script src="js/ui.js"></script>
   <script src="app.js"></script>
 </body>
