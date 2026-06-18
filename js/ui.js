@@ -338,14 +338,6 @@ const UI = (() => {
               <dd>${dataLayer.formatAmount(c.loanAmount)}</dd>
             </div>
             <div class="intel-fact">
-              <dt>Repayment will</dt>
-              <dd>${renderTraitValue(p.repaymentWillingness, "will")}</dd>
-            </div>
-            <div class="intel-fact">
-              <dt>Complaint tendency</dt>
-              <dd>${renderTraitValue(p.complaintTendency, "complaint")}</dd>
-            </div>
-            <div class="intel-fact">
               <dt>Overdue reason</dt>
               <dd>${renderOverdueReason(c.overdueReason)}</dd>
             </div>
@@ -358,6 +350,52 @@ const UI = (() => {
             <span class="intel-communication-label">Recent communication</span>
             <p class="intel-communication-text">${formatLastContactDisplay(c)}</p>
           </div>
+        </section>
+
+        <section class="intel-section">
+          <h3 class="intel-section-label">客户特征</h3>
+          <dl class="intel-facts">
+            <div class="intel-fact">
+              <dt>性别 / 年龄</dt>
+              <dd>${escapeHtml(p.gender)} · ${p.age}岁</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>职业</dt>
+              <dd>${escapeHtml(p.occupation)}</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>所在城市</dt>
+              <dd>${escapeHtml(p.city)}</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>收入水平</dt>
+              <dd>${escapeHtml(p.incomeLevel)}</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>婚姻状况</dt>
+              <dd>${escapeHtml(p.maritalStatus)}</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>联系偏好</dt>
+              <dd>${escapeHtml(p.contactPreference)}</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>还款意愿</dt>
+              <dd>${renderTraitValue(p.repaymentWillingness, "will")}</dd>
+            </div>
+            <div class="intel-fact">
+              <dt>投诉倾向</dt>
+              <dd>${renderTraitValue(p.complaintTendency, "complaint")}</dd>
+            </div>
+            ${
+              p.complaintSuggestedAction
+                ? `<div class="intel-fact intel-fact--wide">
+                    <dt>投诉应对建议</dt>
+                    <dd class="intel-fact-note">${escapeHtml(p.complaintSuggestedAction)}</dd>
+                  </div>`
+                : ""
+            }
+          </dl>
         </section>
 
         <section class="intel-section">
