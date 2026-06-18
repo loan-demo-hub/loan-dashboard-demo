@@ -353,44 +353,44 @@ const UI = (() => {
         </section>
 
         <section class="intel-section">
-          <h3 class="intel-section-label">客户特征</h3>
+          <h3 class="intel-section-label">Customer Profile</h3>
           <dl class="intel-facts">
             <div class="intel-fact">
-              <dt>性别 / 年龄</dt>
-              <dd>${escapeHtml(p.gender)} · ${p.age}岁</dd>
+              <dt>Gender / Age</dt>
+              <dd>${escapeHtml(p.gender)} · ${p.age}</dd>
             </div>
             <div class="intel-fact">
-              <dt>职业</dt>
+              <dt>Occupation</dt>
               <dd>${escapeHtml(p.occupation)}</dd>
             </div>
             <div class="intel-fact">
-              <dt>所在城市</dt>
+              <dt>City</dt>
               <dd>${escapeHtml(p.city)}</dd>
             </div>
             <div class="intel-fact">
-              <dt>收入水平</dt>
+              <dt>Income level</dt>
               <dd>${escapeHtml(p.incomeLevel)}</dd>
             </div>
             <div class="intel-fact">
-              <dt>婚姻状况</dt>
+              <dt>Marital status</dt>
               <dd>${escapeHtml(p.maritalStatus)}</dd>
             </div>
             <div class="intel-fact">
-              <dt>联系偏好</dt>
+              <dt>Contact preference</dt>
               <dd>${escapeHtml(p.contactPreference)}</dd>
             </div>
             <div class="intel-fact">
-              <dt>还款意愿</dt>
+              <dt>Repayment willingness</dt>
               <dd>${renderTraitValue(p.repaymentWillingness, "will")}</dd>
             </div>
             <div class="intel-fact">
-              <dt>投诉倾向</dt>
+              <dt>Complaint tendency</dt>
               <dd>${renderTraitValue(p.complaintTendency, "complaint")}</dd>
             </div>
             ${
               p.complaintSuggestedAction
                 ? `<div class="intel-fact intel-fact--wide">
-                    <dt>投诉应对建议</dt>
+                    <dt>Complaint handling</dt>
                     <dd class="intel-fact-note">${escapeHtml(p.complaintSuggestedAction)}</dd>
                   </div>`
                 : ""
